@@ -10,6 +10,20 @@ hints.
 It has no bar, no compositor, no animations and no config parser. Configuration
 is a C header compiled into the binary, as in dwm.
 
+![twmx with three tiled terminals](docs/screenshot.png)
+
+<sup>Default config, three xterms. The whole window manager uses 3.5 MB of RAM
+and 0% CPU while idle.</sup>
+
+### See it in action
+
+![twmx demo: tiling, focus, swapping, monocle, floating, fullscreen, workspaces](docs/demo.gif)
+
+<sup>New windows tile automatically. Then: moving focus and swapping windows,
+resizing the master area, monocle layout, floating a window and dragging it
+with Super, fullscreen, and switching to workspace 2 (twmx rebuilds in under
+half a second) and back.</sup>
+
 ## Features
 
 - **Tiling:** master/stack layout (dwm-style) and monocle, with configurable gaps.
@@ -221,5 +235,9 @@ DISPLAY=:1 xrandr --setmonitor right 640/0x800/0+640+0 none
 lines that move and resize windows. They are kept for reference: they are
 still the shortest introduction to Xlib window management.
 
-TinyWM was written by Nick Welch <nick@incise.org>. This software is in the
-public domain and is provided AS IS, with NO WARRANTY.
+TinyWM was written by Nick Welch <nick@incise.org>.
+
+## License
+
+twmx is public domain, like TinyWM. See [LICENSE](LICENSE) (the Unlicense).
+It is provided AS IS, with NO WARRANTY.
