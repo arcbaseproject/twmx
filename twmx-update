@@ -1,0 +1,77 @@
+#!/bin/sh
+# twmx-update: download the latest twmx source from GitHub
+# (raw.githubusercontent.com), rebuild it and reinstall it.
+# Installed by install.sh and run daily by a systemd timer (or cron).
+# Safe to run by hand.
+#
+# The new version is built in a staging directory first. If it does not
+# build (for example because your config.h needs a new setting), nothing is
+# changed. Your config.h is kept; the other source files are replaced.
+#
+# usage: twmx-update [--force]   (--force rebuilds even when up to date)
+
+FILES="twmx.c config.def.h Makefile twmx-update"
+
+# Everything runs inside main so the shell has parsed the whole file
+# before this script replaces itself on disk.
+main() {
+	if [ "$(id -u)" = 0 ]; then
+		prefix=/usr/local src=/usr/local/src/twmx
+	else
+		prefix=$HOME/.local src=$HOME/.local/src/twmx
+	fi
+	prefix=${TWMX_PREFIX:-$prefix}
+	src=${TWMX_SRC:-$src}
+	url=${TWMX_URL:-https://raw.githubusercontent.com/arcbaseproject/twmx/master}
+
+	mkdir -p "$src" || fail "cannot create $src"
+	stage=$(mktemp -d "$src/.stage.XXXXXX") || fail "cannot create a staging directory"
+	trap 'rm -rf "$stage"' EXIT
+	trap 'exit 1' HUP INT TERM
+
+	changed=0
+	for f in $FILES; do
+		download "$url/$f" "$stage/$f" || fail "could not download $f (offline?)"
+		cmp -s "$stage/$f" "$src/$f" || changed=1
+	done
+	if [ $changed = 0 ] && [ "${1:-}" != --force ]; then
+		log "already up to date"
+		return 0
+	fi
+
+	[ -x "$prefix/bin/twmx" ] && upgrade=1 || upgrade=0
+	[ -f "$src/config.h" ] && cp "$src/config.h" "$stage/config.h"
+	if ! make -s -C "$stage" >"$stage/build.log" 2>&1; then
+		cat "$stage/build.log" >&2
+		fail "the new version does not build; the installed twmx is unchanged." \
+		     "If you changed config.h, compare it with config.def.h"
+	fi
+	make -s -C "$stage" PREFIX="$prefix" install || fail "install into $prefix failed"
+	for f in $FILES config.h; do
+		cp "$stage/$f" "$src/$f"
+	done
+	# atomic replace: a running copy of this script keeps its old inode
+	cp "$stage/twmx-update" "$prefix/bin/.twmx-update.new" \
+		&& chmod 755 "$prefix/bin/.twmx-update.new" \
+		&& mv -f "$prefix/bin/.twmx-update.new" "$prefix/bin/twmx-update"
+	log "installed $("$prefix/bin/twmx" -v) into $prefix/bin"
+	[ $upgrade = 1 ] && log "restart twmx (Super+Shift+Q, then start it again) to run the new version"
+	return 0
+}
+
+has()  { command -v "$1" >/dev/null 2>&1; }
+log()  { printf 'twmx-update: %s\n' "$*"; }
+fail() { log "$*" >&2; exit 1; }
+
+download() {
+	if has curl; then
+		curl -fsSL --retry 2 -o "$2" "$1"
+	elif has wget; then
+		wget -q -O "$2" "$1"
+	else
+		fail "curl or wget is required"
+	fi
+}
+
+main "$@"
+exit

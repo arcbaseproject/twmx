@@ -43,13 +43,50 @@ Build time:
 - Xlib and XRandR headers: `libx11`, `libxrandr` (Arch); `libx11-dev`,
   `libxrandr-dev` (Debian/Ubuntu); `libX11-devel`, `libXrandr-devel` (Fedora)
 - `pkg-config` (optional; falls back to `/usr/X11R6`)
+- `curl` or `wget` (only for `install.sh` and `twmx-update`)
 
 Run time:
 
 - libX11, libXrandr
 - `xterm` and `dmenu` for the default terminal and launcher (both configurable)
 
-## Building and installing
+## Quick install (with auto-update)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/arcbaseproject/twmx/master/install.sh | sh
+```
+
+or, from a checkout, `sh install.sh` (this also carries over your `config.h`).
+The installer:
+
+- offers to install missing build dependencies with your package manager
+  (pacman, apt, dnf, zypper, xbps)
+- downloads the source from `raw.githubusercontent.com` into
+  `~/.local/src/twmx`, builds it, and installs `twmx` and `twmx-update` into
+  `~/.local/bin`, without root and without git
+- enables a daily auto-update through a systemd user timer, or cron if there
+  is no systemd
+
+Options: `--system` installs to `/usr/local` with the source in
+`/usr/local/src/twmx`, a root timer, and a display manager session entry; run
+it with `sudo`. `--no-auto-update` skips the timer, `--uninstall` removes
+everything except the source directory, and `-y` skips the confirmation prompt.
+
+**Auto-update.** `twmx-update` downloads the current source files from
+`raw.githubusercontent.com` and compares them with the saved copies. When
+something changed, it builds the new version in a staging directory and
+installs it only if the build succeeds. A failed build (for example because
+`config.def.h` gained a setting your `config.h` lacks) leaves the installed
+binary and the saved source untouched. Run it by hand at any time, or use
+`twmx-update --force` to rebuild after editing `~/.local/src/twmx/config.h`.
+Your `config.h` is always kept. Other files in that directory are replaced
+by updates, so make code changes in a git checkout instead.
+
+The running window manager keeps going; the new build is used the next time
+you start twmx. Logs: `journalctl --user -u twmx-update`. Turn it off with
+`systemctl --user disable --now twmx-update.timer`.
+
+## Building and installing by hand
 
 ```sh
 make                    # creates config.h from config.def.h on first build

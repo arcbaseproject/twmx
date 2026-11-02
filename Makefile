@@ -18,7 +18,7 @@ all: twmx
 config.h:
 	cp config.def.h $@
 
-twmx: twmx.c config.h
+twmx: twmx.c config.h Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(XINC) twmx.c -o $@ $(LDFLAGS) $(XLIB)
 
 test: config.h
