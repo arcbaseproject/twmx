@@ -123,12 +123,16 @@ binary, link stripped: `make LDFLAGS=-s`.
 | Super + Q                   | Close focused window                    |
 | Super + J / K               | Focus next / previous window            |
 | Super + Shift + J / K       | Move window down / up in the stack      |
+| Super + Shift + Enter       | Zoom: swap window with the master       |
+| Super + I / O               | More / fewer windows in the master area |
 | Super + H / L               | Shrink / grow master area               |
 | Super + T / M               | Tile / monocle layout                   |
+| Super + Shift + F           | Floating layout                         |
 | Super + Space               | Toggle floating                         |
 | Super + F                   | Toggle fullscreen                       |
 | Super + 1–9                 | Switch to workspace                     |
 | Super + Shift + 1–9         | Move window to workspace                |
+| Super + Tab                 | Back to the previous workspace          |
 | Super + , / .               | Focus previous / next monitor           |
 | Super + Shift + , / .       | Move window to previous / next monitor  |
 | Super + Shift + Q           | Exit twmx                             |
@@ -149,7 +153,8 @@ again. You can set:
 - `gappx`: gap between windows and around the screen edge
 - `focusfollowsmouse`: `1` for sloppy focus, `0` for click-to-focus
 - `wsnames`: workspace names; the number of entries is the number of workspaces
-- `mfact`, `nmaster`, `defaultlayout`: tiling defaults (`0` = tile, `1` = monocle)
+- `mfact`, `nmaster`, `defaultlayout`: tiling defaults (`0` = tile, `1` = monocle,
+  `2` = floating)
 - `rules`: per-application floating/workspace rules (match on `xprop WM_CLASS`)
 - `termcmd`, `launchercmd`: terminal and launcher commands
 - `keys`, `buttons`, `MODKEY`: key and mouse bindings

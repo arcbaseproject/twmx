@@ -79,13 +79,15 @@ typedef struct {
 	int mx, my, mw, mh;      /* monitor geometry */
 	int wx, wy, ww, wh;      /* work area: monitor minus dock struts */
 	int ws;                  /* workspace shown on this monitor */
+	int prevws;              /* workspace shown before it, for viewprev */
 } Monitor;
 
 typedef void (*Layout)(Monitor *);
 
 typedef struct {
 	float mfact;
-	int layout;
+	int nmaster;
+	int layout, prevlayout;
 	Client *sel;             /* last focused client on this workspace */
 } Workspace;
 
@@ -111,10 +113,12 @@ enum { CurNormal, CurMove, CurResize, CurLast };
 /* layouts */
 static void tile(Monitor *m);
 static void monocle(Monitor *m);
+static void floating(Monitor *m);
 
 /* commands bound in config.h */
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
+static void incnmaster(const Arg *arg);
 static void killclient(const Arg *arg);
 static void mousedrag(const Arg *arg);
 static void movestack(const Arg *arg);
@@ -127,6 +131,8 @@ static void spawn(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void togglefullscreen(const Arg *arg);
 static void view(const Arg *arg);
+static void viewprev(const Arg *arg);
+static void zoom(const Arg *arg);
 
 #include "config.h"
 
@@ -491,7 +497,7 @@ tile(Monitor *m)
 		n++;
 	if (n == 0)
 		return;
-	nm = MIN(MAX(nmaster, 0), n);
+	nm = MIN(wss[m->ws].nmaster, n);
 	if (nm == 0)
 		mw = 0;
 	else if (n > nm)
@@ -521,6 +527,13 @@ monocle(Monitor *m)
 
 	for (c = nexttiled(clients, m->ws); c; c = nexttiled(c->next, m->ws))
 		place(c, m->wx + g, m->wy + g, m->ww - 2 * g, m->wh - 2 * g);
+}
+
+/* No layout: windows keep their positions (dwm's floating layout). */
+static void
+floating(Monitor *m)
+{
+	(void)m;
 }
 
 /* ---------- arrangement and stacking ---------- */
@@ -936,8 +949,10 @@ updatemonitors(void)
 		free(nm);
 		return;
 	}
-	for (i = 0; i < k; i++)
+	for (i = 0; i < k; i++) {
 		nm[i].ws = i < nmons ? mons[i].ws : -1;
+		nm[i].prevws = i < nmons ? mons[i].prevws : -1;
+	}
 	for (i = 0; i < k; i++) {
 		if (nm[i].ws >= 0)
 			continue;
@@ -948,6 +963,9 @@ updatemonitors(void)
 		}
 		nm[i].ws = ws;
 	}
+	for (i = 0; i < k; i++)
+		if (nm[i].prevws < 0)
+			nm[i].prevws = nm[i].ws;
 	if (!mons)
 		selmon = primary;
 	free(mons);
@@ -1203,6 +1221,7 @@ viewws(int ws)
 	if ((m = wsmon(ws)) >= 0)
 		selmon = m;  /* already shown: just move to that monitor */
 	else {
+		mons[selmon].prevws = mons[selmon].ws;
 		mons[selmon].ws = ws;
 		arrange();
 	}
@@ -1213,6 +1232,14 @@ static void
 view(const Arg *arg)
 {
 	viewws(arg->i);
+}
+
+/* Back to the workspace this monitor showed before. */
+static void
+viewprev(const Arg *arg)
+{
+	(void)arg;
+	viewws(mons[selmon].prevws);
 }
 
 static void
@@ -1248,12 +1275,44 @@ sendmon(const Arg *arg)
 	focus(NULL);
 }
 
+/* Set layout arg->i; a negative argument toggles to the previous layout. */
 static void
 setlayout(const Arg *arg)
 {
-	if (arg->i < 0 || arg->i >= (int)LENGTH(layouts))
+	Workspace *w = &wss[mons[selmon].ws];
+	int next = arg->i < 0 ? w->prevlayout : arg->i;
+
+	if (next >= (int)LENGTH(layouts) || next == w->layout)
 		return;
-	wss[mons[selmon].ws].layout = arg->i;
+	w->prevlayout = w->layout;
+	w->layout = next;
+	arrange();
+}
+
+static void
+incnmaster(const Arg *arg)
+{
+	Workspace *w = &wss[mons[selmon].ws];
+
+	w->nmaster = MAX(w->nmaster + arg->i, 0);
+	arrange();
+}
+
+/* Move the focused window to the master area; on the master, swap it with
+ * the next tiled window. */
+static void
+zoom(const Arg *arg)
+{
+	Client *c = selclient();
+
+	(void)arg;
+	if (!c || c->isfloating || c->isfullscreen)
+		return;
+	if (c == nexttiled(clients, c->ws) && !(c = nexttiled(c->next, c->ws)))
+		return;
+	detach(c);
+	attach(c);
+	focus(c);
 	arrange();
 }
 
@@ -1693,8 +1752,11 @@ setup(void)
 	cursors[CurResize] = XCreateFontCursor(dpy, XC_sizing);
 	for (i = 0; i < NWS; i++) {
 		wss[i].mfact = mfact;
+		wss[i].nmaster = MAX(nmaster, 0);
 		wss[i].layout = defaultlayout >= 0 && defaultlayout < (int)LENGTH(layouts)
 		              ? defaultlayout : 0;
+		/* like dwm, the layout toggle starts out between tile and monocle */
+		wss[i].prevlayout = wss[i].layout ? 0 : 1 % (int)LENGTH(layouts);
 	}
 	setupewmh();
 
