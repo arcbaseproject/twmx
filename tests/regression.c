@@ -129,6 +129,28 @@ main(void)
 	viewws(2);
 	assert(focused == b);
 
+	/* A release right after a rate-capped motion must still land at the drop point. */
+	XWarpPointer(dpy, None, root, 0, 0, 0, 0, 500, 400);
+	XSync(dpy, False);
+	{
+		XEvent mv[3] = {{0}};
+		Arg move = {.i = 0};
+		int ox = b->x, oy = b->y;
+
+		mv[0].type = MotionNotify;
+		mv[0].xmotion.time = 1000;
+		mv[0].xmotion.x_root = 510; mv[0].xmotion.y_root = 410;
+		mv[1] = mv[0];
+		mv[1].xmotion.time = 1005; /* inside the 16 ms cap: skipped */
+		mv[1].xmotion.x_root = 550; mv[1].xmotion.y_root = 440;
+		mv[2].type = ButtonRelease;
+		mv[2].xbutton.x_root = 550; mv[2].xbutton.y_root = 440;
+		for (i = 2; i >= 0; i--) /* XPutBackEvent pushes to the queue head */
+			XPutBackEvent(dpy, &mv[i]);
+		mousedrag(&move);
+		assert(b->x == ox + 50 && b->y == oy + 40);
+	}
+
 	dock = XCreateSimpleWindow(dpy, root, 0, 0, 1280, 30, 0, 0, 0);
 	strut[2] = 30; strut[9] = 1279;
 	XChangeProperty(dpy, dock, atoms[NetWMStrutPartial], XA_CARDINAL, 32,
@@ -160,6 +182,6 @@ main(void)
 	}
 	cleanup();
 	XCloseDisplay(dpy);
-	puts("All six regression checks passed.");
+	puts("All seven regression checks passed.");
 	return 0;
 }

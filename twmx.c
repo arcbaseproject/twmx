@@ -1342,7 +1342,7 @@ mousedrag(const Arg *arg)
 	Client *c = selclient();
 	XEvent ev;
 	Time last = 0;
-	int px, py, ox, oy, ow, oh, dx, dy, di, m;
+	int px, py, ox, oy, ow, oh, dx, dy, di, m, skipped = 0;
 	unsigned int dui;
 	Window dw;
 
@@ -1363,11 +1363,23 @@ mousedrag(const Arg *arg)
 			handler[ev.type](&ev);
 			break;
 		case MotionNotify:
-			if (ev.xmotion.time - last < 1000 / 60)
-				continue; /* cap at ~60 updates per second */
-			last = ev.xmotion.time;
-			dx = ev.xmotion.x_root - px;
-			dy = ev.xmotion.y_root - py;
+		case ButtonRelease:
+			if (ev.type == MotionNotify) {
+				dx = ev.xmotion.x_root - px;
+				dy = ev.xmotion.y_root - py;
+				if (ev.xmotion.time - last < 1000 / 60) {
+					skipped = 1;
+					continue; /* cap at ~60 updates per second */
+				}
+				last = ev.xmotion.time;
+			} else if (!skipped) {
+				break;
+			} else {
+				/* apply the final position the rate cap skipped */
+				dx = ev.xbutton.x_root - px;
+				dy = ev.xbutton.y_root - py;
+			}
+			skipped = 0;
 			if (!c->isfloating) {
 				c->isfloating = 1;
 				arrange();

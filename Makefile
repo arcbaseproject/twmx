@@ -1,6 +1,6 @@
 # twmx - see README.md for details
 
-VERSION = 2.0
+VERSION = 2.1
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
