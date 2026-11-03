@@ -4,6 +4,7 @@ VERSION = 2.1
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
+XSESSIONDIR ?= $(PREFIX)/share/xsessions
 
 PKG_CONFIG ?= pkg-config
 XINC != $(PKG_CONFIG) --cflags x11 xrandr 2>/dev/null || echo -I/usr/X11R6/include
@@ -34,8 +35,11 @@ install: twmx
 	mkdir -p $(DESTDIR)$(BINDIR)
 	cp -f twmx $(DESTDIR)$(BINDIR)/twmx
 	chmod 755 $(DESTDIR)$(BINDIR)/twmx
+	mkdir -p $(DESTDIR)$(XSESSIONDIR)
+	printf '[Desktop Entry]\nName=twmx\nComment=Small tiling window manager\nExec=%s\nType=Application\n' \
+		$(BINDIR)/twmx >$(DESTDIR)$(XSESSIONDIR)/twmx.desktop
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/twmx
+	rm -f $(DESTDIR)$(BINDIR)/twmx $(DESTDIR)$(XSESSIONDIR)/twmx.desktop
 
 .PHONY: all test clean install uninstall
